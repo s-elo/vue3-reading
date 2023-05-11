@@ -1,10 +1,34 @@
 {
+  "type": "module",
   "scripts": {
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",
-    "docs:preview": "vitepress preview"
+    "docs:preview": "vitepress preview",
+    "check": "tsc --incremental --noEmit",
+    "preinstall": "node ./scripts/preinstall.js",
+    "postinstall": "git config --local core.hooksPath ./.git/hooks/ && simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged && pnpm check",
+    "commit-msg": "node scripts/verifyCommit.js"
+  },
+  "lint-staged": {
+    "*.{js,json}": [
+      "prettier --write"
+    ],
+    "*.ts?(x)": [
+      "prettier --parser=typescript --write"
+    ]
   },
   "devDependencies": {
-    "vitepress": "1.0.0-alpha.75"
+    "@types/node": "^20.1.2",
+    "chalk": "^5.2.0",
+    "lint-staged": "^13.2.2",
+    "prettier": "^2.8.8",
+    "simple-git-hooks": "^2.8.1"
+  },
+  "dependencies": {
+    "vitepress": "1.0.0-alpha.75",
+    "vue": "^3.2.47"
   }
 }

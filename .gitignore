@@ -5,7 +5,6 @@
 .idea
 .temp
 .vite_opt_cache
-.vscode
 dist
 cache
 temp
