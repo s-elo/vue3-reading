@@ -9,6 +9,5 @@ hero:
   actions:
     - theme: brand
       text: Get Started
-      link: /markdown-examples
+      link: /start
 ---
-
