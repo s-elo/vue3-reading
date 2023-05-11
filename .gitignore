@@ -11,3 +11,4 @@ temp
 examples-temp
 node_modules
 pnpm-global
+*.tsbuildinfo
