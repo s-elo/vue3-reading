@@ -73,8 +73,6 @@
   --vp-custom-block-tip-border: var(--vp-c-brand);
   --vp-custom-block-tip-text: var(--vp-c-brand-darker);
   --vp-custom-block-tip-bg: var(--vp-c-brand-dimm);
-  --vp-font-family-base: LXGW WenKai Screen R,Calibri,Arial,sans-serif;
-  /* --vp-font-family-mono: LXGW WenKai Screen R,Calibri,Arial,sans-serif; */
 }
 
 .dark {

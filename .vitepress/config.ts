@@ -6,17 +6,7 @@ export default defineConfig({
   description: 'source code reading of vue3',
   srcDir: 'src',
   base: '/vue3-reading/',
-  head: [
-    [
-      'link',
-      {
-        rel: 'stylesheet',
-        href: 'https://gw.alipayobjects.com/os/k/font/lxgwwenkaiscreenr.css',
-        as: 'font',
-        async: 'true'
-      }
-    ]
-  ],
+  lastUpdated: true,
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
@@ -40,6 +30,11 @@ export default defineConfig({
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/s-elo/vue3-reading' }
-    ]
+    ],
+
+    editLink: {
+      pattern: 'https://github.com/s-elo/vue3-reading/blob/master/src/:path',
+      text: 'Edit this page on GitHub'
+    }
   }
 })
