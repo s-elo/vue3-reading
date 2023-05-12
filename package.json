@@ -29,6 +29,7 @@
     "vite": "^4.3.5"
   },
   "dependencies": {
+    "axios": "^1.4.0",
     "vitepress": "1.0.0-alpha.75",
     "vue": "^3.2.47"
   }
