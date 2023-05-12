@@ -1,4 +1,5 @@
 import path from 'path'
+import { type Plugin } from 'vite'
 
 export interface MermaidConfig {
   [x: string]: any
@@ -10,7 +11,7 @@ const DEFAULT_OPTIONS: MermaidConfig = {
   startOnLoad: false
 }
 
-export function MermaidPlugin(inlineOptions?: Partial<MermaidConfig>) {
+export function MermaidPlugin(inlineOptions?: Partial<MermaidConfig>): Plugin {
   const options = {
     ...DEFAULT_OPTIONS,
     ...inlineOptions

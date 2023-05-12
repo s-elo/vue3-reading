@@ -21,12 +21,3 @@
 **仓库代码组织结构**
 
 阅读核心源码之前还是要先熟悉仓库整体结构的，包括每个包的基本用途，关系等。
-
-```mermaid
-flowchart TD
-    A[Christmas] -->|Get money| B(Go shopping)
-    B --> C{Let me think}
-    C -->|One| D[Laptop]
-    C -->|Two| E[iPhone]
-    C -->|Three| F[fa:fa-car Car]
-```
