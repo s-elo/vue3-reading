@@ -9,5 +9,5 @@ hero:
   actions:
     - theme: brand
       text: Get Started
-      link: /start
+      link: /prepare/start
 ---

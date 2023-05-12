@@ -22,5 +22,6 @@
     "noImplicitAny": false,
     "rootDir": "."
   },
-  "include": [".vitepress/config.ts", ".vitepress/theme"]
+  "include": [".vitepress/**/*", "components/**/*", "plugins/**/*"],
+  "exclude": [".vitepress/dist", ".vitepress/cache"]
 }
