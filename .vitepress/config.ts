@@ -35,10 +35,16 @@ export default withMermaid(
 
 function sidebarPrepare(): DefaultTheme.SidebarItem[] {
   return [
+    { text: '开始', link: '/prepare/start' },
     {
-      text: '开始',
+      text: '前置知识',
       collapsed: false,
-      link: '/prepare/start'
+      items: [
+        { text: 'Typescript', link: '/prepare/pre-knowledge/ts' },
+        { text: 'JS Set和Map', link: '/prepare/pre-knowledge/data-structure' },
+        { text: 'JS Proxy 代理对象', link: '/prepare/pre-knowledge/proxy' },
+        { text: '测试-Spec', link: '/prepare/pre-knowledge/spec' }
+      ]
     }
   ]
 }
@@ -47,7 +53,7 @@ function sidebarCore(): DefaultTheme.SidebarItem[] {
   return [
     {
       text: '渲染系统',
-      collapsed: true,
+      collapsed: false,
       items: [{ text: '入口', link: '/core/start' }]
     }
   ]
