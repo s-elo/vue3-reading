@@ -1,9 +1,6 @@
 import path from 'path'
 import { type Plugin } from 'vite'
-
-export interface MermaidConfig {
-  [x: string]: any
-}
+import { MermaidConfig } from './type'
 
 const DEFAULT_OPTIONS: MermaidConfig = {
   //We set loose as default here because is needed to load images
