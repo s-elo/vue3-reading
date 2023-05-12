@@ -14,7 +14,7 @@ export const render = async (
       )
     ).default
   }
-  console.log(mermaid)
+
   mermaid.initialize(config)
 
   const { svg } = await mermaid.render(id, code)
