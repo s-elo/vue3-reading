@@ -9,26 +9,26 @@
 
 当然这部分不会有很大的篇幅，主要有以下几点：
 
-**开发工具链**：
+#### **开发工具链**：
 
-- [TypeScript](https://www.typescriptlang.org/) as the development language
-- [Vite](https://vitejs.dev/) and [ESBuild](https://esbuild.github.io/) for development bundling
-- [Rollup](https://rollupjs.org) for production bundling
-- [Vitest](https://vitest.dev/) for unit testing
-- [Prettier](https://prettier.io/) for code formatting
-- [ESLint](https://eslint.org/) for static error prevention (outside of types)
+- [TypeScript](https://www.typescriptlang.org/) 作为开发语言
+- [Vite](https://vitejs.dev/) 和 [ESBuild](https://esbuild.github.io/) 作为开发时的服务和打包工具
+- [Rollup](https://rollupjs.org) 作为生产时的打包工具
+- [Vitest](https://vitest.dev/) 作为单测工具
+- [Prettier](https://prettier.io/) 作为代码格式化工具
+- [ESLint](https://eslint.org/) 作为静态代码错误检查工具(不包含类型)
 
-**脚本基本用途**
+#### **脚本基本用途**
 
 了解仓库里scripts/*里的脚本用途，熟悉仓库在工程方面有哪些工具可供使用。
 
-**仓库代码组织结构**
+#### **仓库代码组织结构**
 
 阅读核心源码之前还是要先熟悉仓库整体结构的，包括每个包的基本用途，关系以及单元测试的编写等。
 
-### 前置知识
+### [前置知识](./pre-knowledge/proxy)
 
-在阅读核心源码之前，如果能够熟悉一些[前置知识](./pre-knowledge/proxy)会更容易进行阅读。
+在阅读核心源码之前，如果能够熟悉一些前置知识会更容易进行阅读。
 目前文档的前置知识基本是从此[文档](https://vue3js.cn/start/)所写的内容搬运过来的。
 也是看到此项目似乎已经停更，才想自己去接着阅读下去吧。
 
@@ -40,7 +40,7 @@
 ### 阅读方式
 
 :::warning
-本人对于阅读源码以及技术写作都没有太多的经验，所以在阅读以及输出内容的过程中很可能会不断的调整阅读方式以及内容的组织结构。非常欢迎其他小伙伴加入。
+阅读源码以及技术写作的方式可能会有所不足，在阅读以及输出内容的过程中很可能会不断的调整阅读方式以及内容的组织结构。非常欢迎其他小伙伴们在评论区提建议和讨论或者一起加入。
 :::
 
 就目前以仅有的知识和经验，阅读方式大致会按照如下进行：
@@ -58,23 +58,37 @@
     vue["vue"]
     runtime-dom["@vue/runtime-dom"]
     runtime-core["@vue/runtime-core"]
-    reactivity["`@vue/reactivity **(响应式系统)**`"]
-
-    subgraph "Runtime Packages"
-      subgraph "`**渲染系统**`"
-        runtime-dom --> runtime-core
-      end
+    reactivity["@vue/reactivity"]
+  
+    subgraph Runtime ["Runtime Packages"]
+      runtime-dom --> runtime-core
       runtime-core --> reactivity
+      subgraph Renderer ["`**(渲染系统)**`"]
+        runtime-dom
+        runtime-core
+      end
+      subgraph Reactivity ["`**(响应式系统)**`"]
+        reactivity
+      end
     end
 
-    subgraph "`Compiler Packages **(编译系统)**`"
+    subgraph Compiler ["Compiler Packages"]
       compiler-sfc --> compiler-core
       compiler-sfc --> compiler-dom
       compiler-dom --> compiler-core
+      subgraph CompilerSys ["`**(编译系统)**`"]
+        compiler-sfc
+        compiler-dom
+        compiler-core
+      end
     end
 
     vue ---> compiler-dom
     vue --> runtime-dom
+
+    style Renderer fill:#f9f
+    style CompilerSys fill:#f96
+    style Reactivity fill:#bbf
 ```
 
 阅读的模块也是按照这三大系统来进行的，且将会按照在使用vue时执行的顺序进行(e.g. createApp -> mount -> render...)，从而引出三大系统的核心内容。
