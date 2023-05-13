@@ -38,13 +38,18 @@ function sidebarPrepare(): DefaultTheme.SidebarItem[] {
     { text: '开始', link: '/prepare/start' },
     {
       text: '前置知识',
-      collapsed: false,
+      collapsed: true,
       items: [
         { text: 'Typescript', link: '/prepare/pre-knowledge/ts' },
         { text: 'JS Set和Map', link: '/prepare/pre-knowledge/data-structure' },
         { text: 'JS Proxy 代理对象', link: '/prepare/pre-knowledge/proxy' },
         { text: '测试-Spec', link: '/prepare/pre-knowledge/spec' }
       ]
+    },
+    {
+      text: '仓库分析',
+      collapsed: false,
+      items: [{ text: '整体介绍', link: '/prepare/repository/overview' }]
     }
   ]
 }
