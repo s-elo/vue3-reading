@@ -1,5 +1,5 @@
 <template>
-  <div :class="`mermaid-container ${isZoomIn ? 'float' : ''}`" @click="isZoomIn = true">
+  <div :class="`mermaid-container ${isZoomIn ? 'float' : ''}`" @click="clickContainer">
     <div v-html="svg"></div>
   </div>
   <Modal v-model="isZoomIn" :close-by-click-background="true">
@@ -43,6 +43,10 @@ watch(props, () => {
 const isZoomIn = ref(false)
 const svg = ref<string | null>(null)
 let mut: MutationObserver | null = null
+
+const clickContainer = (event: Event) => {
+  isZoomIn.value = true
+}
 
 const renderChart = async () => {
   const hasDarkClass = document.documentElement.classList.contains('dark')
