@@ -24,8 +24,8 @@ const loadComment = () => {
   commentContainer.append(scriptDom)
 
   scriptDom.addEventListener('load', () => {
-    if (commentContainer.children.length <= 1) return;
-    
+    if (commentContainer.children.length <= 1) return
+
     const originalComment = commentContainer.firstElementChild
     if (!originalComment) return
 

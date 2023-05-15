@@ -49,7 +49,11 @@ function sidebarPrepare(): DefaultTheme.SidebarItem[] {
     {
       text: '仓库分析',
       collapsed: false,
-      items: [{ text: '整体介绍', link: '/prepare/repository/overview' }]
+      items: [
+        { text: '整体介绍', link: '/prepare/repository/overview' },
+        { text: '开发', link: '/prepare/repository/dev' },
+        { text: '生产打包', link: '/prepare/repository/build' }
+      ]
     }
   ]
 }

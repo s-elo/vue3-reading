@@ -4,8 +4,8 @@
 
 ### 阅读仓库
 
-希望通过熟悉vue3整体仓库了解开源项目所需要的元素。
-基于contributing.md里的[Development Setup](https://github.com/s-elo/vue3-core/blob/main/.github/contributing.md#development-setup); [Scripts](https://github.com/s-elo/vue3-core/blob/main/.github/contributing.md#scripts); [Project Structure](https://github.com/s-elo/vue3-core/blob/main/.github/contributing.md#project-structure)。主要了解项目在工程方面内容。
+希望通过熟悉 vue3 整体仓库了解开源项目所需要的元素。
+基于 contributing.md 里的[Development Setup](https://github.com/s-elo/vue3-core/blob/main/.github/contributing.md#development-setup); [Scripts](https://github.com/s-elo/vue3-core/blob/main/.github/contributing.md#scripts); [Project Structure](https://github.com/s-elo/vue3-core/blob/main/.github/contributing.md#project-structure)。主要了解项目在工程方面内容。
 
 当然这部分不会有很大的篇幅，主要有以下几点：
 
@@ -20,7 +20,7 @@
 
 #### **脚本基本用途**
 
-了解仓库里scripts/*里的脚本用途，熟悉仓库在工程方面有哪些工具可供使用。
+了解仓库里 scripts/\*里的脚本用途，熟悉仓库在工程方面有哪些工具可供使用。
 
 #### **仓库代码组织结构**
 
@@ -31,7 +31,6 @@
 在阅读核心源码之前，如果能够熟悉一些前置知识会更容易进行阅读。
 目前文档的前置知识基本是从此[文档](https://vue3js.cn/start/)所写的内容搬运过来的。
 也是看到此项目似乎已经停更，才想自己去接着阅读下去吧。
-
 
 ## 核心
 
@@ -47,7 +46,7 @@
 
 **阅读方式**
 
-对于vue来说有三大知名系统：`渲染系统(renderer)`，`响应式系统(reactivity)`和`编译系统(compiler)`。根据尤大提及的[包依赖关系](https://github.com/s-elo/vue3-core/blob/main/.github/contributing.md#package-dependencies)也可以看出此三大系统.
+对于 vue 来说有三大知名系统：`渲染系统(renderer)`，`响应式系统(reactivity)`和`编译系统(compiler)`。根据尤大提及的[包依赖关系](https://github.com/s-elo/vue3-core/blob/main/.github/contributing.md#package-dependencies)也可以看出此三大系统.
 
 ```mermaid
   %%{init: {"flowchart": {"htmlLabels": false}} }%%
@@ -59,7 +58,7 @@
     runtime-dom["@vue/runtime-dom"]
     runtime-core["@vue/runtime-core"]
     reactivity["@vue/reactivity"]
-  
+
     subgraph Runtime ["Runtime Packages"]
       runtime-dom --> runtime-core
       runtime-core --> reactivity
@@ -91,9 +90,9 @@
     style Reactivity fill:#bbf
 ```
 
-阅读的模块也是按照这三大系统来进行的，且将会按照在使用vue时执行的顺序进行(e.g. createApp -> mount -> render...)，从而引出三大系统的核心内容。
+阅读的模块也是按照这三大系统来进行的，且将会按照在使用 vue 时执行的顺序进行(e.g. createApp -> mount -> render...)，从而引出三大系统的核心内容。
 
-按照这个顺序，最先接触到的会是渲染系统，接着会涉及到响应式系统，二者可能会并行进行阅读分析。理论上来说，有了渲染系统和响应式系统就可以正常地进行[MVVM模式](https://www.ruanyifeng.com/blog/2015/02/mvcmvp_mvvm.html)工作了，所以编译系统以我的理解来看是与前二者相对较分离的，应该放在最后来阅读。
+按照这个顺序，最先接触到的会是渲染系统，接着会涉及到响应式系统，二者可能会并行进行阅读分析。理论上来说，有了渲染系统和响应式系统就可以正常地进行[MVVM 模式](https://www.ruanyifeng.com/blog/2015/02/mvcmvp_mvvm.html)工作了，所以编译系统以我的理解来看是与前二者相对较分离的，应该放在最后来阅读。
 
 如果能够将三大系统的核心坚持读完，剩下的其他功能比如[SSR](https://vuejs.org/guide/scaling-up/ssr.html)，[动画](https://vuejs.org/guide/extras/animation.html#animation-techniques)，[Suspense](https://vuejs.org/guide/built-ins/suspense.html)等会再接着阅读学习。当然，在阅读核心系统时应该会不能避免的接触到其他相关代码。
 
