@@ -1,5 +1,8 @@
 <script lang="ts" setup>
-const props = defineProps<{ modelValue: boolean; closeByClickBackground?: boolean;}>()
+const props = defineProps<{
+  modelValue: boolean
+  closeByClickBackground?: boolean
+}>()
 const emits = defineEmits(['update:modelValue'])
 
 const clickMask = () => {

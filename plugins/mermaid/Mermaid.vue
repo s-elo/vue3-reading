@@ -1,9 +1,16 @@
 <template>
-  <div :class="`mermaid-container ${isZoomIn ? 'float' : ''}`" @click="clickContainer">
+  <div
+    :class="`mermaid-container ${isZoomIn ? 'float' : ''}`"
+    @click="clickContainer"
+  >
     <div v-html="svg"></div>
   </div>
   <Modal v-model="isZoomIn" :close-by-click-background="true">
-    <div class="larger-mermaid-container" @click="isZoomIn = false" v-if="isZoomIn">
+    <div
+      class="larger-mermaid-container"
+      @click="isZoomIn = false"
+      v-if="isZoomIn"
+    >
       <div v-html="svg"></div>
     </div>
   </Modal>

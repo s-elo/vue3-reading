@@ -1,9 +1,9 @@
 {
   "type": "module",
   "scripts": {
-    "docs:dev": "vitepress dev",
-    "docs:build": "vitepress build",
-    "docs:preview": "vitepress preview",
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview",
     "check": "tsc --incremental --noEmit",
     "preinstall": "node ./scripts/preinstall.js",
     "postinstall": "git config --local core.hooksPath ./.git/hooks/ && simple-git-hooks"
@@ -13,7 +13,7 @@
     "commit-msg": "node scripts/verifyCommit.js"
   },
   "lint-staged": {
-    "*.{js,json}": [
+    "*.{js,json,vue,md}": [
       "prettier --write"
     ],
     "*.ts?(x)": [
