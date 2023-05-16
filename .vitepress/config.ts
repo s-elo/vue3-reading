@@ -9,6 +9,15 @@ export default withMermaid(
     srcDir: 'src',
     base: '/vue3-reading/',
     lastUpdated: true,
+    head: [
+      [
+        'link',
+        {
+          href: 'https://vuejs.org/images/logo.png',
+          rel: 'icon'
+        }
+      ]
+    ],
     themeConfig: {
       // https://vitepress.dev/reference/default-theme-config
       nav: [
@@ -38,7 +47,9 @@ export default withMermaid(
         //   indexName: 'vue3-reading'
         // }
         provider: 'local'
-      }
+      },
+
+      logo: 'https://vuejs.org/images/logo.png'
     },
     markdown: {
       lineNumbers: true
