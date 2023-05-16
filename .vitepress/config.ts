@@ -28,6 +28,16 @@ export default withMermaid(
       editLink: {
         pattern: 'https://github.com/s-elo/vue3-reading/blob/master/src/:path',
         text: 'Edit this page on GitHub'
+      },
+
+      search: {
+        // provider: 'algolia',
+        // options: {
+        //   appId: 'YUV9XZGZGY',
+        //   apiKey: '6ac59918772dd0245cac43e636827a12',
+        //   indexName: 'vue3-reading'
+        // }
+        provider: 'local'
       }
     }
   })
