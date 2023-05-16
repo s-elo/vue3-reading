@@ -25,7 +25,7 @@
 此脚本主要是通过[esbuild](https://esbuild.github.io/)对要开发的包进行监听打包，修改即 rebuild。
 
 ::: details 为什么只有在开发时才用 esbuild？
-我们知道 esbuild 是通过`Go`编写的，可以直接使用编译后的打包代码进行打包处理，所以速度非常快，可以有更好的开发体验。但是 rollup 打包出来的体积更小，且有更好的[tree-shaking](https://developer.mozilla.org/en-US/docs/Glossary/Tree_shaking)，所以在生产环境的打包工具选择 rollup 而不是 esbuild。
+我们知道 esbuild 是通过`Go`编写的，可以直接使用编译后的打包代码进行打包处理，所以速度非常快，可以有**更好的开发体验**。但是 rollup 打包出来的体积更小，且有更好的[tree-shaking](https://developer.mozilla.org/en-US/docs/Glossary/Tree_shaking)，所以在生产环境的打包工具选择 rollup 而不是 esbuild。
 :::
 
 #### 使用
@@ -67,7 +67,7 @@ $ pnpm unlink /Users/xxx/xxx/vue-core/packages/vue
 
 ##### 引包规则
 
-在`package.json`中指定的入口文件如下所示：
+在`vue`包的`package.json`中指定入口文件的部分如下所示：
 
 ::: details 部分 package.json
 
@@ -189,4 +189,87 @@ $ pnpm unlink /Users/xxx/xxx/vue-core/packages/vue
   ```
 - 在处理`externals`(打包时不包含的依赖包)时，`compiler-sfc`包需要额外 external 掉`@vue/consolidate`里的依赖包(**devDependencies**)，但包含`@vue/consolidate`包本身(打包格式不是`cjs`和`esm-bundler(-runtime)`格式时)。
 
-### pre-dev-sfc.js
+::: details ts-check for js file
+通过`// ts-check`可以让对应的 js 文件纳入 ts 检查
+
+```js
+// @ts-check
+let x = 3
+x = '' // [!code error] // Type 'string' is not assignable to type 'number'.ts(2322)
+```
+
+:::
+
+### [pre-dev-sfc.js](https://github.com/s-elo/vue3-core/blob/main/scripts/pre-dev-sfc.js)
+
+此脚本主要是在执行`dev-sfc`之前确保其所依赖的包都已经打包好了。否则就执行`npm run build-compiler-cjs`。
+
+## 核心包开发命令
+
+### dev
+
+对应于`node scripts/dev.js`。
+
+前面我们知道`dev.js`默认开发的包是`vue`，打包方式是`global(iife)`，所以此命令就是用来开发`global`打包的`vue`的。
+
+### dev-esm
+
+对应于`node scripts/dev.js -if esm-bundler-runtime`。
+
+即开发的包是`vue`，打包方式是`esm-bundler-runtime`，并且是将所有依赖包都打包进来的 inline 模式。
+
+## 辅助工具的开发
+
+### dev-compiler
+
+对应于`run-p \"dev template-explorer\" serve`，用于开发[编译器转译工具](https://template-explorer.vuejs.org/)。
+
+其中`run-p`是指并行运行`pnpm dev template-explorer`和`pnpm serve`命令，用的是[npm-run-all](https://github.com/mysticatea/npm-run-all)这个工具。
+
+- **pnpm dev template-explorer**：相当于`node scripts/dev.js template-explorer`所以此时使用`global`格式打包的`template-explorer`这个包。
+- **pnpm serve**：基于项目根目录启动一个静态资源服务器，这样我们就可以直接访问本地进行开发`http://localhost:5000/packages/template-explorer/local.html`(对应的就是`open`命令)
+  ::: details 如何访问 template-explorer
+  `template-explorer`包下有两个 html 文件：`index.html`和`local.html`。
+  其两者的区别就是 local 引用的资源是本地的，而 index 是用 CDN 的资源。
+
+  ```html{24}
+  <title>Vue Template Explorer</title>
+  <link
+    rel="stylesheet"
+    data-name="vs/editor/editor.main"
+    href="https://unpkg.com/monaco-editor@0.20.0/min/vs/editor/editor.main.css" // [!code warning] // index
+    href="./node_modules/monaco-editor/min/vs/editor/editor.main.css" // [!code warning] // local
+  />
+  <link rel="stylesheet" href="./style.css" />
+
+  <div id="header"></div>
+  <div id="source" class="editor"></div>
+  <div id="output" class="editor"></div>
+
+  <script src="https://unpkg.com/monaco-editor@0.20.0/min/vs/loader.js"></script> // [!code warning] // index
+  <script src="./node_modules/monaco-editor/min/vs/loader.js"></script> // [!code warning] // local
+  <script>
+    require.config({
+      paths: {
+        vs: 'https://unpkg.com/monaco-editor@0.20.0/min/vs' // [!code warning] // index
+        vs: './node_modules/monaco-editor/min/vs' // [!code warning] // local
+      }
+    })
+  </script>
+  <script src="./dist/template-explorer.global.js"></script>
+  <script>
+    require(['vs/editor/editor.main'], init /* injected by build */)
+  </script>
+  ```
+
+  引用的打包资源就是`./dist/template-explorer.global.js`。
+  :::
+
+### dev-sfc
+
+对应于`run-s dev-sfc-prepare dev-sfc-run`，用于开发[在线演练场](https://play.vuejs.org)。
+
+其中`run-s`是指串行执行命令。
+
+- **dev-sfc-prepare**: 即在执行`dev-sfc`之前确保其所依赖的包都已经打包好了。否则就执行`npm run build-compiler-cjs`。
+- **dev-sfc-run**: 这个命令对应于`run-p \"dev compiler-sfc -f esm-browser\" \"dev vue -if esm-bundler-runtime\" \"dev server-renderer -if esm-bundler\" dev-sfc-serve`。即并行执行开发`sfc-playground`依赖的`compiler-sfc`, `vue`和`server-renderer`这几个包，以及启动`sfc-playground`的开发服务器。
