@@ -39,6 +39,9 @@ export default withMermaid(
         // }
         provider: 'local'
       }
+    },
+    markdown: {
+      lineNumbers: true
     }
   })
 )
