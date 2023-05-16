@@ -43,6 +43,136 @@ $ node scripts/dev.js runtime-dom -if esm-bundler
 $ node scripts/dev.js -f cjs runtime-dom
 ```
 
+最后通过`pnpm link`(或者其他包管理工具)进行本地 link 调试。
+
+```bash
+# /Users/xxx/xxx/vue-core/packages/vue
+$ pnpm dev vue -if esm-bundler
+
+# 在用于调试的项目根目录下 e.g. /Users/xxx/xxx/my-project/
+$ pnpm link /Users/xxx/xxx/vue-core/packages/vue
+
+# /Users/xxx/xxx/my-project/下unlink
+$ pnpm unlink /Users/xxx/xxx/vue-core/packages/vue
+```
+
+这样`vue`包下的代码的改动就可以实时地体现在调试项目中了。
+
+::: tip 开发时打包的注意点
+
+- 在`pnpm link`之前，我们需要明确要开发的包的打包方式。比如上面例子我们是`esm-bundler`&&`inline`(所有其他依赖包一起打包进来了)的方式打包的。
+  那么我们在用于调试的项目中需要使用 esm 模块的方式且只需要安装`vue`即可，无需处理其他的依赖包比如`runtime-dom`等。
+- 在开发某个包之前，请确保已经通过`pnpm build`将其他依赖包打包好，因为在引入依赖包时都会根据以下在`package.json`的配置寻找对应的入口文件。
+  :::
+
+##### 引包规则
+
+在`package.json`中指定的入口文件如下所示：
+
+::: details 部分 package.json
+
+```json
+{
+  "main": "index.js",
+  "module": "dist/vue.runtime.esm-bundler.js",
+  "types": "dist/vue.d.ts",
+  "unpkg": "dist/vue.global.js",
+  "jsdelivr": "dist/vue.global.js",
+  "files": [
+    "index.js",
+    "index.mjs",
+    "dist",
+    "compiler-sfc",
+    "server-renderer",
+    "jsx-runtime",
+    "jsx.d.ts",
+    "macros.d.ts",
+    "macros-global.d.ts",
+    "ref-macros.d.ts"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/vue.d.ts",
+      "import": {
+        "node": "./index.mjs",
+        "default": "./dist/vue.runtime.esm-bundler.js"
+      },
+      "require": "./index.js"
+    },
+    "./server-renderer": {
+      "types": "./server-renderer/index.d.ts",
+      "import": "./server-renderer/index.mjs",
+      "require": "./server-renderer/index.js"
+    },
+    "./compiler-sfc": {
+      "types": "./compiler-sfc/index.d.ts",
+      "import": "./compiler-sfc/index.mjs",
+      "require": "./compiler-sfc/index.js"
+    },
+    "./jsx-runtime": {
+      "types": "./jsx-runtime/index.d.ts",
+      "import": "./jsx-runtime/index.mjs",
+      "require": "./jsx-runtime/index.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./jsx-runtime/index.d.ts",
+      "import": "./jsx-runtime/index.mjs",
+      "require": "./jsx-runtime/index.js"
+    },
+    "./jsx": "./jsx.d.ts",
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json",
+    "./macros": "./macros.d.ts",
+    "./macros-global": "./macros-global.d.ts",
+    "./ref-macros": "./ref-macros.d.ts"
+  }
+}
+```
+
+:::
+
+- **main**: 指定`cjs`方式引入时对应的入口文件，值为`index.js`。
+  ::: details index.js
+  `main`指定的`index.js`里实际引入的就是打包好后的`vue.cjs.(prod).js`文件。因此我们需要确保`dist`目录下有对应的`vue.cjs.(prod).js`文件。
+
+  ```js
+  // index.js 文件内容
+  'use strict'
+
+  if (process.env.NODE_ENV === 'production') {
+    module.exports = require('./dist/vue.cjs.prod.js')
+  } else {
+    module.exports = require('./dist/vue.cjs.js')
+  }
+  ```
+
+  :::
+
+- **module**: 指定`esm`模块方式引入时对应的入口文件，值为`dist/vue.runtime.esm-bundler.js`。
+- **unpkg**: 这是一个为了支持[UNPKG](https://unpkg.com/)的 CDN 而使用的，可以看到其指定的文件就是通过[iife](https://en.wikipedia.org/wiki/Immediately_invoked_function_expression)的方式打包的`dist/vue.global.js`；这样只要上传到了 npm，我们就可以通过`unpkg.com/:package@:version/:file`(e.g. https://unpkg.com/@vue/runtime-dom)的方式通过CDN去获取对应包的资源了。不过这里为啥不用`dist/vue.global.prod.js`?
+- **jsdelivr**: 和`unpkg`类似，也是为了支持[jsdelivr](https://www.jsdelivr.com/documentation#id-npm)。
+- **types**: 指定包的类型声明文件。
+- **files**: 上传到 npm 需要包含的文件。[这里](https://areknawo.com/whats-what-package-json-cheatsheet/#files)解释的不错。
+- **exports**: 指定除了主入口文件之外还可以通过相对路径(相对包的根目录)指定引入其他的文件；其中可以通过`types`, `import`和`require`来进一步指定不同模块方式下的引入对应文件。例如对于`./server-renderer`
+
+  ```json
+  {
+    "./server-renderer": {
+      "types": "./server-renderer/index.d.ts",
+      "import": "./server-renderer/index.mjs",
+      "require": "./server-renderer/index.js"
+    }
+  }
+  ```
+
+  ```js
+  // esm: ./server-renderer/index.mjs
+  import { renderToString } from 'vue/server-renderer'
+
+  // cjs: ./server-renderer/index.js
+  const { renderToString } = require('vue/server-renderer')
+  ```
+
 #### 实现
 
 具体的脚本代码并不多，主要是明确 esbuild 的配置，接着调用 esbuild 提供的 api 即可。
