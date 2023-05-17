@@ -5,11 +5,11 @@
 ### 阅读仓库
 
 希望通过熟悉 vue3 整体仓库了解开源项目所需要的元素。
-基于 contributing.md 里的[Development Setup](https://github.com/s-elo/vue3-core/blob/main/.github/contributing.md#development-setup); [Scripts](https://github.com/s-elo/vue3-core/blob/main/.github/contributing.md#scripts); [Project Structure](https://github.com/s-elo/vue3-core/blob/main/.github/contributing.md#project-structure)。主要了解项目在工程方面内容。
+基于 contributing.md 里的[Development Setup](https://github.com/vuejs/core/blob/main/.github/contributing.md#development-setup); [Scripts](https://github.com/vuejs/core/blob/main/.github/contributing.md#scripts); [Project Structure](https://github.com/vuejs/core/blob/main/.github/contributing.md#project-structure)。主要了解项目在工程方面内容。
 
 当然这部分不会有很大的篇幅，主要有以下几点：
 
-#### **开发工具链**：
+#### **开发工具链**
 
 - [TypeScript](https://www.typescriptlang.org/) 作为开发语言
 - [Vite](https://vitejs.dev/) 和 [ESBuild](https://esbuild.github.io/) 作为开发时的服务和打包工具
@@ -46,7 +46,7 @@
 
 **阅读方式**
 
-对于 vue 来说有三大知名系统：`渲染系统(renderer)`，`响应式系统(reactivity)`和`编译系统(compiler)`。根据尤大提及的[包依赖关系](https://github.com/s-elo/vue3-core/blob/main/.github/contributing.md#package-dependencies)也可以看出此三大系统.
+对于 vue 来说有三大知名系统：`渲染系统(renderer)`，`响应式系统(reactivity)`和`编译系统(compiler)`。根据尤大提及的[包依赖关系](https://github.com/vuejs/core/blob/main/.github/contributing.md#package-dependencies)也可以看出此三大系统.
 
 ```mermaid
   %%{init: {"flowchart": {"htmlLabels": false}} }%%
