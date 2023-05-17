@@ -44,3 +44,29 @@ $ node scripts/build.js runtime -a
 - `--release`: 是否是 release 状态。
 
 ## 打包格式
+
+在前面已经提到了很多次各种打包格式(formats)了，那么在这里再对每种介绍一遍。
+
+- **global**:
+  - 通过`iife`的方式打包
+  - `inline`所有依赖包
+  - 包的名字，即挂载到全局对象上的变量名，会在对应的`package.json`里`buildOptions.name`指定；通常就是用于`<script src="...">`的方式(e.g. CDN)引入时
+  - 生成的文件有`<包对应的名字>.global(.prod).js`
+  - 对于`vue`包会多一种打包规则：`global-runtime`，生成`vue(.runtime).global(.prod).js`，表示只包含`runtime`的的代码，没有包含`编译系统`。
+- **cjs**:
+  - 打包成在`node`环境下可用`require`的方式引入的格式；用在`ssr`
+  - `external`所有依赖包
+  - 生成的文件有`<包对应的名字>.cjs(.prod).js`
+- **esm-browser**:
+  - 打包成`esm`模块供浏览器使用，如`<script type="module">`
+  - `inline`所有依赖包
+  - 生成的文件有`<包对应的名字>.esm-browser(.prod).js`
+  - 对于`vue`包会多一种打包规则：`esm-browser-runtime`，生成`vue(.runtime).esm-browser(.prod).js`，表示只包含`runtime`的的代码，没有包含`编译系统`。
+- **esm-bundler**:
+  - 用于用户自己处理打包问题和选择打包工具(bundler)，如使用`webpack`, `rollup`和`parcel`；
+  - 类似于`cjs`格式(也是自己处理 bundler)，只是以`esm`模块的方式提供
+  - `external`所有依赖包；所以开发时有提供[dev-esm](./dev.md#dev-esm)命令
+  - 生成的文件有`<包对应的名字>.esm-bundler.js`；注意没有`prod`，因为需要我们自己处理打包问题如压缩代码等
+  - 对于`vue`包会多一种打包规则：`esm-bundler-runtime`，生成`vue(.runtime).esm-browser.js`，表示只包含`runtime`的的代码，没有包含`编译系统`。
+
+## 实现

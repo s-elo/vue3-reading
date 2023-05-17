@@ -40,13 +40,12 @@ export default withMermaid(
       },
 
       search: {
-        // provider: 'algolia',
-        // options: {
-        //   appId: 'YUV9XZGZGY',
-        //   apiKey: '6ac59918772dd0245cac43e636827a12',
-        //   indexName: 'vue3-reading'
-        // }
-        provider: 'local'
+        provider: 'algolia',
+        options: {
+          appId: '6LTKEEIWRI',
+          apiKey: '53c282e3ed19be3da3d168322e280ad0',
+          indexName: 'vue3-reading'
+        }
       },
 
       logo: 'https://vuejs.org/images/logo.png'
