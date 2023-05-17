@@ -35,7 +35,11 @@
 此外还可以提供以下参数，脚本是通过[minimist](https://www.npmjs.com/package/minimist)处理参数的。
 
 - `-f`: 指定打包的格式，包括`global`, `esm-bundler`, `esm-browser`, `cjs`以及`vue`包额外的格式`global-runtime`, `esm-bundler-runtime`, `esm-browser-runtime`；默认`global`；具体每种格式的含义在分析[打包](./build)相关命令脚本时再展开。
-- `-i`: (inline)是否将依赖包一起打包进去；不提供即 `false`；为`false`时对`cjs`和`esm-bundler(-runtime)`格式会 external 掉所有的依赖包。
+- `-i`: (inline)是否将依赖包一起打包进去；不提供即 `false`；
+  ::: tip
+  为`false`时只对`cjs`和`esm-bundler(-runtime)`格式会 external 掉所有的依赖包。
+  其他`global`, `esm-browser`格式都需要 inline 所有依赖包以可以单独使用。
+  :::
 
 ```bash
 $ node scripts/dev.js runtime-dom -if esm-bundler
@@ -189,8 +193,9 @@ $ pnpm unlink /Users/xxx/xxx/vue-core/packages/vue
   ```
 - 在处理`externals`(打包时不包含的依赖包)时，`compiler-sfc`包需要额外 external 掉`@vue/consolidate`里的依赖包(**devDependencies**)，但包含`@vue/consolidate`包本身(打包格式不是`cjs`和`esm-bundler(-runtime)`格式时)。
 
-::: details ts-check for js file
-通过`// ts-check`可以让对应的 js 文件纳入 ts 检查
+::: details 脚本的书写方式
+
+- 通过`// ts-check`可以让对应的 js 文件纳入 ts 检查
 
 ```js
 // @ts-check
@@ -198,7 +203,22 @@ let x = 3
 x = '' // [!code error] // Type 'string' is not assignable to type 'number'.ts(2322)
 ```
 
-:::
+- 使用`esm`方式导入；有两种方式可以实现在`node`环境使用`esm`引包方式：1. 通过指定`package.json`里的`type`为`module`；2. 通过命名文件后缀为`.mjs`；以下是在`node`环境使用`esm`时一些区别调整：
+  - `__dirname` 不再适用，应该为`import { dirname } from 'node:path'` 里的`dirname`函数方法
+    ```js
+    import { dirname } from 'node:path'
+    import { fileURLToPath } from 'node:url'
+    // import.meta.url即当前执行脚本的fileUrl: e.g. file:///Users/xxx/xxx/index.js
+    // fileURLToPath(import.meta.url) 之后就是 /Users/xxx/xxx/index.js
+    const __dirname = dirname(fileURLToPath(import.meta.url))
+    ```
+  - 动态导入可以通过`createRequire`方法实现
+    `js
+    import { createRequire } from 'node:module'
+    const require = createRequire(import.meta.url)
+    const pkg = require('./package.json')
+    `
+    :::
 
 ### [pre-dev-sfc.js](https://github.com/s-elo/vue3-core/blob/main/scripts/pre-dev-sfc.js)
 
@@ -217,6 +237,8 @@ x = '' // [!code error] // Type 'string' is not assignable to type 'number'.ts(2
 对应于`node scripts/dev.js -if esm-bundler-runtime`。
 
 即开发的包是`vue`，打包方式是`esm-bundler-runtime`，并且是将所有依赖包都打包进来的 inline 模式。
+
+因为[esm-bundler 格式](./build.md#打包格式)下生产环境打包回`external`掉所有依赖包的，而这里提供`inline`选项就可以在开发时更好的调试。
 
 ## 辅助工具的开发
 
