@@ -213,14 +213,15 @@ x = '' // [!code error] // Type 'string' is not assignable to type 'number'.ts(2
     const __dirname = dirname(fileURLToPath(import.meta.url))
     ```
   - 动态导入可以通过`createRequire`方法实现
-    `js
+    ```js
     import { createRequire } from 'node:module'
     const require = createRequire(import.meta.url)
     const pkg = require('./package.json')
-    `
-    :::
+    ```
 
-### [pre-dev-sfc.js](https://github.com/s-elo/vue3-core/blob/main/scripts/pre-dev-sfc.js)
+:::
+
+### [pre-dev-sfc.js](https://github.com/vuejs/core/blob/main/scripts/pre-dev-sfc.js)
 
 此脚本主要是在执行`dev-sfc`之前确保其所依赖的包都已经打包好了。否则就执行`npm run build-compiler-cjs`。
 

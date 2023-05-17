@@ -14,7 +14,7 @@
 
 ## 包的用途及关系
 
-关于每个包的用途，在[这里](https://github.com/s-elo/vue3-core/blob/main/.github/contributing.md#project-structure)其实已经讲了，我们简单过一遍后主要来梳理一下包的关系即可。
+关于每个包的用途，在[这里](https://github.com/vuejs/core/blob/main/.github/contributing.md#project-structure)其实已经讲了，我们简单过一遍后主要来梳理一下包的关系即可。
 
 ### 基本用途
 
@@ -55,8 +55,12 @@
 通过包之间的引用关系，我们可以很快地根据 package.json 里的依赖得出以下基本关系：
 
 :::tip 说明
-不包含仅有类型依赖的关系，因为打包时会直接放到 dts 文件里，不会实际依赖被依赖类型的包，
-所以真正发包时不需要安装仅类型被依赖的包。
+不包含仅有类型依赖的关系，虽然在最终打包出来的.d.ts 中会需要 import 对应的类型依赖包，但是会通过`peerDependencies`来确保此依赖包已经安装。
+
+例如对于`server-render`里引用了`@vue/runtime-core`的类型，但并没有在`dependencies`字段加入它，而是在`peerDependencies`确保了`vue`包的安装以确保`@vue/runtime-core`的安装。
+
+::: details 关于 peerDependencies
+npm versions 1, 2, and 7 will automatically install peerDependencies if they are not explicitly depended upon higher in the dependency tree. For npm versions 3 through 6, you will receive a warning that the peerDependency is not installed instead.
 :::
 
 ```mermaid
@@ -114,7 +118,7 @@
     vue --> compiler-dom
     vue --> runtime-dom
     vue --> compiler-sfc
-    vue --> server-renderer
+    vue <-- peer dep --> server-renderer
 
     %% server-renderer deps
     server-renderer --> shared
