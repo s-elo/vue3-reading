@@ -32,10 +32,24 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
       - uses: actions/configure-pages@v2
+
       - uses: actions/upload-pages-artifact@v1
         with:
           path: ./.vitepress/dist
+
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v1
+      
+      - name: Algolia crawler creation and crawl
+        uses: algolia/algoliasearch-crawler-github-actions@v1.0.10
+        id: algolia_crawler
+        with: # mandatory parameters
+          crawler-user-id: ${{ secrets.CRAWLER_USER_ID }}
+          crawler-api-key: ${{ secrets.CRAWLER_API_KEY }}
+          algolia-app-id: ${{ secrets.ALGOLIA_APP_ID }}
+          algolia-api-key: ${{ secrets.ALGOLIA_API_KEY }}
+          site-url: 'https://s-elo.github.io/vue3-reading/'
+          crawler-name: 'vue3-reading'
