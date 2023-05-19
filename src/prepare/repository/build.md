@@ -150,7 +150,7 @@ flowchart LR
 
 ## 实现
 
-`build.js`脚本的整体执行顺序是：`处理可选参数` -> `扫描缓存enum` -> [并行](#并行打包流程)[打包](#打包单个包) -> `检查包大小` -> [打包类型声明文件](#打包类型声明)。
+`build.js`脚本的整体执行顺序是：`处理可选参数` -> `扫描缓存enum` -> [并行](#并行打包流程runparallel)[打包](#打包单个包) -> `检查包大小` -> [打包类型声明文件](#打包类型声明)。
 
 [可选参数](#使用)上面已经介绍了；对于[const-enum.js](#const-enum脚本)的`scanEnums`方法如何`扫描缓存enum`的，因为涉及代码的语法解析，我们放在[最后](#babel处理ast)再去分析，我们只需要知道此方法可以帮我们缓存所有的 enum 变量，然后再并行打包时复用；所以接下来我们来看主要打包过程。
 
@@ -364,7 +364,62 @@ console.log('TEST')
 - `enumPlugin插件`：在`const enum`类型注入后移除`export const enum`语句；在`rollup-plugin-esbuild`插件之前处理，所以对于`esbuild`处理阶段`const enum`类型已经被注入实际对应的值，不用再处理了。
 - `enumDefines注入对象`：`scanEnum`cache 的数据，`enum表达式`为键，实际值为值；e.g. `export const enum Test { TEST = 'TEST' }` -> `{ 'Test.TEST': 'TEST' }`
 
-### 并行打包流程
+### 并行打包流程 runParallel
+
+实现了对某一个包进行打包后，我们来看看是如何对多个包进行并行打包的。
+
+```js{10-21}
+async function buildAll(targets) {
+  await runParallel(cpus().length, targets, build)
+}
+async function runParallel(maxConcurrency, source, iteratorFn) {
+  const ret = []
+  const executing = []
+  for (const item of source) {
+    const p = Promise.resolve().then(() => iteratorFn(item, source))
+    ret.push(p)
+    // 并发限制
+    if (maxConcurrency <= source.length) {
+      // e 作为一个promise，p fulfilled后就会将对应的e从executing中移除，以让出位置
+      // 移除让位后 e 也fulfilled了
+      const e = p.then(() => executing.splice(executing.indexOf(e), 1))
+      executing.push(e)
+      if (executing.length >= maxConcurrency) {
+        // 并发数量已满，让现有的任务们race，从而fulfilled让位
+        // 只要其中一个任务fulfilled就race完成，即让出一个位置，继续对source的循环
+        await Promise.race(executing)
+      }
+    }
+  }
+  return Promise.all(ret)
+}
+```
+
+我们知道前面的`build`方法本身是一个异步函数，所以我们其实可以直接用`Promise.all`来让多个`build`都异步执行即可。但是以上代码却通过`cpu`的最大个数来进行并行，换句话说就是`runParallel`做的是**并发限制**，其中`iteratorFn`就是对应单个包的`build`过程。
+
+以下是一个输出例子：
+
+```js
+runParallel(
+  2, // 最大并发数
+  [1, 2, 3, 4, 5],
+  item =>
+    new Promise(res =>
+      setTimeout(() => {
+        console.log(item)
+        res()
+      }, 1000)
+    )
+)
+
+// 1, 2
+// after 1s
+// 3, 4
+// after 1s
+// 5
+```
+
+不过不太清楚这里为什么要做并发控制，估计是考虑到当前打包计算机的资源分配问题吧。
 
 ### 打包类型声明
 
