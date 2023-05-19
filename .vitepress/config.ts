@@ -48,7 +48,9 @@ export default withMermaid(
         }
       },
 
-      logo: 'https://vuejs.org/images/logo.png'
+      logo: 'https://vuejs.org/images/logo.png',
+
+      outline: [2, 6]
     },
     markdown: {
       lineNumbers: true
