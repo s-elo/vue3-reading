@@ -16,6 +16,13 @@ export default withMermaid(
           href: 'https://vuejs.org/images/logo.png',
           rel: 'icon'
         }
+      ],
+      [
+        'meta',
+        {
+          name: 'google-site-verification',
+          content: 'qd_Z8UuWw83sTtVbiYfZRxjth5hHNgG0n9aYOfs82Ds'
+        }
       ]
     ],
     themeConfig: {
