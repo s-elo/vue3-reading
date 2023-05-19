@@ -24,8 +24,8 @@
 
 此脚本主要是通过[esbuild](https://esbuild.github.io/)对要开发的包进行监听打包，修改即 rebuild。
 
-::: details 为什么只有在开发时才用 esbuild？
-我们知道 esbuild 是通过`Go`编写的，可以直接使用编译后的打包代码进行打包处理，所以速度非常快，可以有**更好的开发体验**。但是 rollup 打包出来的体积更小，且有更好的[tree-shaking](https://developer.mozilla.org/en-US/docs/Glossary/Tree_shaking)，所以在生产环境的打包工具选择 rollup 而不是 esbuild。
+::: details 为什么开发用 esbuild，生产用 rollup？
+我们知道 esbuild 是通过`Go`编写的，可以直接使用编译后的打包代码进行打包处理，所以速度非常快，可以有**更好的开发体验**。但是 rollup 打包出来的体积更小，且有更好的[tree-shaking](https://developer.mozilla.org/en-US/docs/Glossary/Tree_shaking)。其实在生产环境的打包是用 **rollup with esbuild**的方式打包(结合[rollup-plugin-esbuild](https://www.npmjs.com/package/rollup-plugin-esbuild))。
 :::
 
 #### 使用
@@ -34,11 +34,11 @@
 
 此外还可以提供以下参数，脚本是通过[minimist](https://www.npmjs.com/package/minimist)处理参数的。
 
-- `-f`: 指定打包的格式，包括`global`, `esm-bundler`, `esm-browser`, `cjs`以及`vue`包额外的格式`global-runtime`, `esm-bundler-runtime`, `esm-browser-runtime`；默认`global`；具体每种格式的含义在分析[打包](./build)相关命令脚本时再展开。
+- `-f`: 指定打包的格式，包括`global`, `esm-bundler`, `esm-browser`, `cjs`以及`vue`包额外的格式`global-runtime`, `esm-bundler-runtime`, `esm-browser-runtime`；默认`global`；具体每种格式的含义在分析[打包](./build#打包格式)相关命令脚本时再展开。
 - `-i`: (inline)是否将依赖包一起打包进去；不提供即 `false`；
   ::: tip
   为`false`时只对`cjs`和`esm-bundler(-runtime)`格式会 external 掉所有的依赖包。
-  其他`global`, `esm-browser`格式都需要 inline 所有依赖包以可以单独使用。
+  其他`global`, `esm-browser`格式都需要 inline 所有依赖包以可以单独使用。具体可看[打包格式的介绍](./build#基本关系图)
   :::
 
 ```bash
@@ -69,7 +69,7 @@ $ pnpm unlink /Users/xxx/xxx/vue-core/packages/vue
 - 在开发某个包之前，请确保已经通过`pnpm build`将其他依赖包打包好，因为在引入依赖包时都会根据以下在`package.json`的配置寻找对应的入口文件。
   :::
 
-##### 引包规则
+#### 引包规则
 
 在`vue`包的`package.json`中指定入口文件的部分如下所示：
 
@@ -154,7 +154,7 @@ $ pnpm unlink /Users/xxx/xxx/vue-core/packages/vue
 
 - **module**: 指定`esm`模块方式引入时对应的入口文件，值为`dist/vue.runtime.esm-bundler.js`。
 - **unpkg**: 这是一个为了支持[UNPKG](https://unpkg.com/)的 CDN 而使用的，可以看到其指定的文件就是通过[iife](https://en.wikipedia.org/wiki/Immediately_invoked_function_expression)的方式打包的`dist/vue.global.js`；这样只要上传到了 npm，我们就可以通过`unpkg.com/:package@:version/:file`(e.g. https://unpkg.com/@vue/runtime-dom)的方式通过CDN去获取对应包的资源了。不过这里为啥不用`dist/vue.global.prod.js`?
-- **jsdelivr**: 和`unpkg`类似，也是为了支持[jsdelivr](https://www.jsdelivr.com/documentation#id-npm)。
+- **jsdelivr**: 和`unpkg`类似，也是为了支持[jsdelivr](https://www.jsdelivr.com/documentation#id-npm)。不过`jsdelivr`会代码压缩后返回`vue.global.js`。
 - **types**: 指定包的类型声明文件。
 - **files**: 上传到 npm 需要包含的文件。[这里](https://areknawo.com/whats-what-package-json-cheatsheet/#files)解释的不错。
 - **exports**: 指定除了主入口文件之外还可以通过相对路径(相对包的根目录)指定引入其他的文件；其中可以通过`types`, `import`和`require`来进一步指定不同模块方式下的引入对应文件。例如对于`./server-renderer`
@@ -223,7 +223,7 @@ x = '' // [!code error] // Type 'string' is not assignable to type 'number'.ts(2
 
 ### [pre-dev-sfc.js](https://github.com/vuejs/core/blob/main/scripts/pre-dev-sfc.js)
 
-此脚本主要是在执行`dev-sfc`之前确保其所依赖的包都已经打包好了。否则就执行`npm run build-compiler-cjs`。
+此脚本主要是在执行`dev-sfc`之前确保其所依赖的包都已经打包好了。否则就执行`npm run build-compiler-cjs`以确保依赖包的打包工作已完成。
 
 ## 核心包开发命令
 
@@ -296,3 +296,10 @@ x = '' // [!code error] // Type 'string' is not assignable to type 'number'.ts(2
 
 - **dev-sfc-prepare**: 即在执行`dev-sfc`之前确保其所依赖的包都已经打包好了。否则就执行`npm run build-compiler-cjs`。
 - **dev-sfc-run**: 这个命令对应于`run-p \"dev compiler-sfc -f esm-browser\" \"dev vue -if esm-bundler-runtime\" \"dev server-renderer -if esm-bundler\" dev-sfc-serve`。即并行执行开发`sfc-playground`依赖的`compiler-sfc`, `vue`和`server-renderer`这几个包，以及启动`sfc-playground`的开发服务器。
+
+## 总结
+
+- 介绍了`dev.js`脚本的[使用](#使用)，可以监听并以指定参数打包对应包从而进行开发
+- 介绍了基本的[引包规则](#引包规则)，主要包括`main`, `module`, `unpkg`和`jsdelivr`等字段
+- 仓库[编写脚本的方式](#实现)
+- 简单介绍了每个`scripts`命令的用途
