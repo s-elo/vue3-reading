@@ -18,13 +18,12 @@
 }
 ```
 
-我们会首先看看是如何使用这个脚本来打包的，以及过一遍[每种打包格式的介绍](https://github.com/vuejs/core/blob/main/packages/vue/README.md#which-dist-file-to-use)，接着对于实现会主要关注以下几点：
+我们会首先看看是如何使用这个脚本来打包的，以及[基于此](https://github.com/vuejs/core/blob/main/packages/vue/README.md#which-dist-file-to-use)过一遍[每种打包格式的介绍](#打包格式)，接着对于实现会主要关注以下几点：
 
 - [具体打包一个包的实现与配置](#打包单个包)
 - [并行打包](#并行打包流程-runparallel)
 - [打包类型声明文件](#打包类型声明)
-- 打包后检查包大小的方法
-- 了解[const-enum.js](#const-enum-js)是如何做扫描和缓存的
+- 了解[const-enum.js](#const-enum-脚本)是如何利用`ast`做扫描和缓存处理的
 
 ## 使用
 
@@ -150,9 +149,9 @@ flowchart LR
 
 ## 实现
 
-`build.js`脚本的整体执行顺序是：`处理可选参数` -> `扫描缓存enum` -> [并行](#并行打包流程-runparallel)[打包](#打包单个包) -> `检查包大小` -> [打包类型声明文件](#打包类型声明)。
+`build.js`脚本的整体执行顺序是：`处理可选参数` -> [扫描缓存 enum](#enum-类型的-ast) -> [并行](#并行打包流程-runparallel)[打包](#打包单个包) -> `检查包大小` -> [打包类型声明文件](#打包类型声明)。
 
-[可选参数](#使用)上面已经介绍了；对于[const-enum.js](#const-enum-脚本)的`scanEnums`方法如何`扫描缓存enum`的，因为涉及代码的语法解析，我们放在[最后](#babel-处理-ast)再去分析，我们只需要知道此方法可以帮我们缓存所有的 enum 变量，然后再并行打包时复用；所以接下来我们来看主要打包过程。
+[可选参数](#使用)上面已经介绍了；对于[const-enum.js](#const-enum-脚本)的`scanEnums`方法如何`扫描缓存enum`的，因为涉及代码的语法解析，我们放在[最后](#babel-处理-ast)再去分析，我们只需要知道此方法可以帮我们缓存所有的 enum 变量，然后再并行打包时复用；`检查包大小`主要是检查`global.prod.js`文件在三种处理下的大小：**压缩后代码**, **gzip 算法**和**brotli 算法**。所以接下来我们来看主要打包过程。
 
 ### 打包单个包
 
@@ -475,7 +474,7 @@ flowchart LR
 
 里面用到了[rollup-plugin-dts](https://www.npmjs.com/package/rollup-plugin-dts)和一个自定义插件`patchTypes`，我们主要来看看自定义插件`patchTypes`。
 
-具体实现因为涉及`babel`解析`ast`，需要了解一些`ast`的属性，所以和`扫描缓存enum`部分一样，我们留在[最后](#babel-处理-ast)进行分析。我们先看看其主要做了什么：
+具体实现和[const-enum.js](#babel-处理-ast)部分类似，都是通过`babel`解析`ast`，就不重复分析了。我们主要看看其用途：
 
 ::: details
 
@@ -543,7 +542,7 @@ import '../jsx'
 
 前面的[const-enum.js](#const-enum-脚本)脚本和[patchTypes](#patchtypes-plugin)插件具体实现都涉及到了用`@babel/parser`的[parse](https://babeljs.io/docs/babel-parser#api)方法得到`ast`并结合[magic-string](https://www.npmjs.com/package/magic-string)来进行转换源码的操作。我们知道`ast`是对源码编译后生成的一个对应对象(即抽象语法树)，所以除去具体的如何编译成语法树的算法，剩下的各种树节点的类型(变量，函数，导出等，以及每个节点的起始结束位置等信息)其实也没什么需要说明的，主要还是在[文档](https://github.com/babel/babel/blob/main/packages/babel-parser/ast/spec.md)找到对应的类型含义。
 
-这里有一个[在线语法树生成工具](https://lihautan.com/babel-ast-explorer/)可以参考用一下。下面我们对`const-enum.js`脚本和`patchTypes`插件里用到的一些节点类型进行简单地说明。
+这里有一个[在线语法树生成工具](https://lihautan.com/babel-ast-explorer/)可以参考用一下。下面我们对`const-enum.js`脚本里用到的一些节点类型进行简单地说明。
 
 ### enum 类型的 ast
 
@@ -559,7 +558,7 @@ export const enum Test {
 export { Test }
 ```
 
-```js{6-7,17,24,28,41-42,47} [ast]
+```js{5-7,10,14,17,21,24,28,35,40,41-42,44,47} [ast]
 const ast = {
   program: {
     body: [
@@ -618,4 +617,162 @@ const ast = {
 
 :::
 
-重点需要关注用到的已经高亮，其中
+重点需要关注用到的已经高亮，其中有很多种`节点类型`，即`type`所指的东西；`start`和`end`指的是解析出来的节点类型所覆盖的起始和结束位置。
+
+基于此我们可以来看看具体`const-enum.js`里`scanEnum`方法和`constEnum`方法返回的`enumPlugin`插件是如何利用这个`ast`对象进行对应处理的。
+
+### scanEnum
+
+前面我们说到这个方法的作用是扫描`const enum`类型然后将相关信息缓存起来。
+
+信息数据会存在`temp/enum.json`里，每次执行完`build.js`脚本就会 remove 掉，格式为：
+
+```ts
+type enumData = {
+  // Map: 文件路径名 -> "export const enum"匹配到的ExportNamedDeclaration节点起始结束位置数组
+  ranges: Record<string, [number, number][]>
+  // Map: enum名称.成员 -> 实际值; 后面用于打包注入对应的数据
+  defines: Record<string, string>
+  // 所有去重的enum名称
+  ids: string[]
+}
+```
+
+- **扫描**: 这一步其实就是用`git grep "export const enum"`命令获取仓库的所有匹配包含`export const enum`的文件。
+
+  ```bash
+  $ git grep "export const enum"
+
+  packages/compiler-core/src/ast.ts:export const enum Namespaces {
+  packages/compiler-core/src/ast.ts:export const enum NodeTypes {
+  packages/compiler-core/src/ast.ts:export const enum ElementTypes {
+  packages/compiler-core/src/ast.ts:export const enum ConstantTypes {
+  ...
+  ```
+
+  接着通过`\n`和`:`分割**获取所有的文件路径**并去重，扫描就算完成了。
+
+- **遍历文件获取 enum 信息**: 遍历上面获取的文件并读取文件内容为字符串，然后传给`@babel/parser.parse`函数获取`ast`。
+  对应上面`ast`例子，我们可以获取到对应文件里每个匹配到的`export const enum`节点的起始结束位置，接着一个个 push 到放到`enumData.ranges`对应的数组里，获取每个 enum 名称，以及每个成员的值。
+
+  以下是部分伪代码，`ast`的字段参考上面的`ast`对象：
+
+  ```js{12,17,27}
+  for (const filePath of filePaths) {
+    const fileRawContent = fs.readFileSync(filePath, 'utf-8')
+    const ast = parse(fileRawContent)
+
+    for (const node of ast.program.body) {
+      // 符合"export const enum <enum名称> { [成员] = 值 }"的类型节点
+      if (
+        node.type === 'ExportNamedDeclaration' &&
+        node.declaration?.type === 'TSEnumDeclaration'
+      ) {
+        // 添加ranges数据
+        enumData.ranges[filePath].push([node.start, node.end])
+
+        // 添加enum名称
+        const id = node.declaration.id.name
+        if (!enumData.ids.includes(id)) {
+          enumData.ids.push(id)
+        }
+
+        // 添加defines数据
+        for (const member of node.declaration.members) {
+          const memberPath = `${id}.${member.id.name}`
+          const memberValue = member.initializer.value
+          if (memberPath in enumData.defines) {
+            throw new Error(`name conflict for enum ${id} in ${file}`)
+          }
+          enumData.defines[memberPath] = JSON.stringify(memberValue)
+        }
+      }
+    }
+  }
+  ```
+
+  还有省略的部分是一些细节处理部分，如处理`BinaryExpression`, `UnaryExpression`等。
+
+  最后将`enumData`以 JSON 形式写入`temp/enum.json`等待`constEnum`函数使用。
+
+### constEnum
+
+此方法会返回一个 rollup 插件和用于打包注入的`enumData.defines`。
+
+```js
+import { constEnum } from './scripts/const-enum.js'
+const [enumPlugin, enumDefines] = constEnum()
+```
+
+上面的代码会在`rollup.config.js`里执行，对于每一个包，都会重新执行一遍`rollup.config.js`，也每一个包都会执行一遍`constEnum`方法，所以我们已经先在`build,js`里执行了`scanEnum`缓存了所有`enumDefines`，并行打包所有包时就可以更快获取 enum 信息了。
+
+### enumPlugin
+
+此插件的作用就是在`esbuild`之前把`export const enum`相关节点代码移除掉。
+
+分为两种情况：`export const enum <enum名称> { [成员] = 值 }`和`export { <enum名称> }`；第二种情况是指导出的`enum名称`是应该被移除的`export const enum`类型，即存在`enumData.ids`里。
+
+第一种情况很简单，直接通过`enumData.ranges`的数据删除掉就行：
+
+```js{7-9}
+// rollup plugin
+const plugin = {
+  transform(rawCode, filePath) {
+    if (filePath in enumData.ranges) {
+      const s = new MagicString(rawCode)
+      // 我们知道里面保存的就是节点的起始结束位置
+      for (const [start, end] of enumData.ranges[filePath]) {
+        s.remove(start, end)
+      }
+    }
+  }
+}
+```
+
+第二种情况需要动态通过正则检查，有重复导出的话再通过`ast`去找到移除：
+
+```js{16}
+const plugin = {
+  transform(rawCode, filePath) {
+    const reExportsRE = new RegExp(
+      `export {[^}]*?\\b(${enumData.ids.join('|')})\\b[^]*?}`
+    )
+
+    if (reExportsRE.test(rawCode)) {
+      const s = new MagicString(rawCode)
+      const ast = parse(rawCode)
+
+      for (const node of ast.program.body) {
+        // 匹配为 export 类型，这里有省略其他条件
+        if (node.type === 'ExportNamedDeclaration') {
+          for (const spec of node.specifiers) {
+            // 应该被移除，却重复导出的enum名称
+            if (enumData.ids.includes(spec.local.name)) {
+              // 下面就是移除操作，通过前一个导出变量或者后一个导出变量位置来处理
+              const next = node.specifiers[i + 1]
+              if (next) {
+                // @ts-ignore
+                s.remove(spec.start, next.start)
+              } else {
+                // last one
+                const prev = node.specifiers[i - 1]
+                // @ts-ignore
+                s.remove(prev ? prev.end : spec.start, spec.end)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+以上就是`const-enum.js`脚本的基本实现了。
+
+## 总结
+
+- 介绍了打包脚本的[基本使用](#使用)和[打包格式](#打包格式)含义及整体关系图
+- 介绍了打包过程的基本实现，包括[rollup 配置](#rollup-config-js)和[并行打包](#并行打包流程-runparallel)
+- 介绍了打包过程中用到的脚本用途和基本实现
+- 介绍了用`babel`处理`ast`在`const-enum.js`脚本上的应用
