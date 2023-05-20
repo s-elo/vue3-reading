@@ -177,6 +177,141 @@ $ pnpm unlink /Users/xxx/xxx/vue-core/packages/vue
   const { renderToString } = require('vue/server-renderer')
   ```
 
+#### 对\_\_esModule 标识的补充
+
+在打包出来的`.cjs.js`中，我们可以看到前面有这么一句
+
+```js
+Object.defineProperty(exports, '__esModule', { value: true })
+```
+
+这是因为在`rollup`配置了`output.esModule: true`，那么在打包时就会对打包的模块**标记成`es`模块**。
+
+为了弄清楚**为什么要这个标记**以及**这个标记是给谁用的**，我们来看一个例子：
+
+::: tip
+以下是在 node 环境下跑的，为了使用`es`模块化，可以设置 package.json 的 type 为 module，或者命名为.mjs 文件；下面我们就直接写.js 后缀表示了
+:::
+
+我们有`index.js`, `es.js`和`cjs.js`文件，现在希望在`es.js`用`es`模块化方式导出数据，在`cjs.js`用`CommonJs`方式导出数据，然后`index.js`引入数据。
+
+导出的数据有**默认数据`name`**，以及具名数据`age`。不过到这里应该就有个疑问：`CommonJs`该如何以默认的方式导出数据？似乎没有。那我们就用`module.exports.default`来暂且代替试试吧。
+
+::: code-group
+
+```js [index.js]
+import defaultName, { age } from './es.js'
+console.log(defaultName, age) // 'leo' 16
+
+import defaultName, { age } from './cjs.js'
+console.log(defaultName, age) // { default: 'leo', age: 16 } 16
+```
+
+```js [es.js]
+const name = 'leo'
+const age = 16
+
+export default name
+export { age }
+```
+
+```js [cjs.js]
+const name = 'leo'
+const age = 16
+
+module.exports.default = name
+module.exports.age = age
+```
+
+:::
+
+结果发现从`cjs.js`导入的默认数据就是整个`module.exports`对象。出现这样的差异，是因为**CommonJS 方式没有提供默认导出的方式**。
+
+要解决这个问题，一些打包工具提出了用`__esModule`属性来对`cjs模块`进行标识，来**告诉打包工具**在用`es`模块化引入该`cjs模块`时，默认导出数据就是`module.exports.default`上的数据。所以上面的两个问题就有了解答：
+
+- **为什么要这个标记**: `CommonJs`没有提供默认导出数据的方式，`es`模块化导入时会产生差异
+- **这个标记是给谁用的**: 给打包工具识别的，所以本质是一种约定俗成的解决方案。
+
+那么下面我们就用`rollup`来对其进行打包，看看能不能让`cjs.js`拥有默认导出的能力~
+
+我们用到了[@rollup/plugin-commonjs](https://www.npmjs.com/package/@rollup/plugin-commonjs)插件来处理`es`引入`cjs`的情况。
+
+::: code-group
+
+```js{11} [打包结果 bundle.js]
+'use strict';
+
+var cjs = {};
+
+const name = 'leo';
+const age = 16;
+
+cjs.default = name;
+var age_1 = cjs.age = age;
+
+console.log(cjs, age_1); // { default: 'leo', age: 16 } 16
+
+exports.age = age_1;
+exports.name = cjs;
+```
+
+```js [rollup.config.js]
+import commonjs from '@rollup/plugin-commonjs'
+
+export default {
+  input: 'index.js',
+  output: {
+    file: 'bundle.js',
+    format: 'cjs' // 这个是最终打包成的格式，是什么对例子没有关系
+    // esModule: true 设为true就对最终打包结果进行es标识，默认为false
+  },
+  plugins: [commonjs()]
+}
+```
+
+:::
+
+发现结果还是一样，因为还没有对`cjs.js`加标识呢。我们看看加了标识后的打包结果：
+
+::: code-group
+
+```js{5,10,13} [打包结果 bundle.js]
+'use strict';
+
+var cjs = {};
+
+Object.defineProperty(cjs, '__esModule', { value: true }); // 一起打包进来了。。。不过起作用了
+
+const name = 'leo';
+const age = 16;
+
+var _default = cjs.default = name; // 取了default属性作为默认导出
+var age_1 = cjs.age = age;
+
+console.log(_default, age_1); // 'leo' 16
+
+exports.age = age_1;
+exports.name = _default;
+```
+
+```js{1} [es标识的cjs.js]
+Object.defineProperty(exports, '__esModule', { value: true });
+
+const name = 'leo'
+const age = 16
+
+module.exports.default = name
+module.exports.age = age
+```
+
+:::
+
+::: tip
+如果`cjs.js`里没有`module.exports.default = name`这一句，那么即使标识了也不会有默认导出的，行为会和没有标识一样，因为打包工具找不到`default`属性的值。
+:::
+
+至此我们基本明白`__esModule`的作用了。
+
 #### 实现
 
 具体的脚本代码并不多，主要是明确 esbuild 的配置，接着调用 esbuild 提供的 api 即可。
@@ -301,5 +436,6 @@ x = '' // [!code error] // Type 'string' is not assignable to type 'number'.ts(2
 
 - 介绍了`dev.js`脚本的[使用](#使用)，可以监听并以指定参数打包对应包从而进行开发
 - 介绍了基本的[引包规则](#引包规则)，主要包括`main`, `module`, `unpkg`和`jsdelivr`等字段
+- 补充说明了打包工具通过[\_\_esModule](#对-esmodule-标识的补充)标识解决`CommonJs`没有默认导出的问题
 - 仓库[编写脚本的方式](#实现)
 - 简单介绍了每个`scripts`命令的用途
