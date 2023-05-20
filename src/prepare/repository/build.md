@@ -1,6 +1,6 @@
 对于打包相关命令，主要基于[scripts/build.js](https://github.com/vuejs/core/blob/main/scripts/build.js)这个脚本，以及`rollup.config.js`和`rollup.dts.config.js`所以了解了这个脚本和 rollup 的配置，我们就基本了解了`package.json`下所有的打包相关命令了。
 
-此外`rollup.config.js`会用到[scripts/aliases.js](#aliases脚本)和[scripts/const-enum.js](#const-enum脚本)
+此外`rollup.config.js`会用到[scripts/aliases.js](#aliases-脚本)和[scripts/const-enum.js](#const-enum-脚本)
 
 ```json
 {
@@ -21,7 +21,7 @@
 我们会首先看看是如何使用这个脚本来打包的，以及过一遍[每种打包格式的介绍](https://github.com/vuejs/core/blob/main/packages/vue/README.md#which-dist-file-to-use)，接着对于实现会主要关注以下几点：
 
 - [具体打包一个包的实现与配置](#打包单个包)
-- [并行打包](#并行打包流程)
+- [并行打包](#并行打包流程-runparallel)
 - [打包类型声明文件](#打包类型声明)
 - 打包后检查包大小的方法
 - 了解[const-enum.js](#const-enum-js)是如何做扫描和缓存的
@@ -150,9 +150,9 @@ flowchart LR
 
 ## 实现
 
-`build.js`脚本的整体执行顺序是：`处理可选参数` -> `扫描缓存enum` -> [并行](#并行打包流程runparallel)[打包](#打包单个包) -> `检查包大小` -> [打包类型声明文件](#打包类型声明)。
+`build.js`脚本的整体执行顺序是：`处理可选参数` -> `扫描缓存enum` -> [并行](#并行打包流程-runparallel)[打包](#打包单个包) -> `检查包大小` -> [打包类型声明文件](#打包类型声明)。
 
-[可选参数](#使用)上面已经介绍了；对于[const-enum.js](#const-enum脚本)的`scanEnums`方法如何`扫描缓存enum`的，因为涉及代码的语法解析，我们放在[最后](#babel处理ast)再去分析，我们只需要知道此方法可以帮我们缓存所有的 enum 变量，然后再并行打包时复用；所以接下来我们来看主要打包过程。
+[可选参数](#使用)上面已经介绍了；对于[const-enum.js](#const-enum-脚本)的`scanEnums`方法如何`扫描缓存enum`的，因为涉及代码的语法解析，我们放在[最后](#babel-处理-ast)再去分析，我们只需要知道此方法可以帮我们缓存所有的 enum 变量，然后再并行打包时复用；所以接下来我们来看主要打包过程。
 
 ### 打包单个包
 
@@ -358,7 +358,7 @@ console.log('TEST')
 
 :::
 
-具体实现我们放在[最后](#babel处理ast)分析。其主要提供了三个东西：
+具体实现我们放在[最后](#babel-处理-ast)分析。其主要提供了三个东西：
 
 - `scanEnum方法`：扫描出仓库里匹配`export const enum`的`const enum`类型，然后将数据 cache 住直至所有包并行打包完成
 - `enumPlugin插件`：在`const enum`类型注入后移除`export const enum`语句；在`rollup-plugin-esbuild`插件之前处理，所以对于`esbuild`处理阶段`const enum`类型已经被注入实际对应的值，不用再处理了。
@@ -471,10 +471,13 @@ flowchart LR
   runtime["temp/packages/vue/src/runtime.d.ts"] --> vue
 ```
 
-::: details patchTypes plugin
+#### patchTypes plugin
+
 里面用到了[rollup-plugin-dts](https://www.npmjs.com/package/rollup-plugin-dts)和一个自定义插件`patchTypes`，我们主要来看看自定义插件`patchTypes`。
 
-具体实现因为涉及`babel`解析`ast`，需要了解一些`ast`的属性，所以和`扫描缓存enum`部分一样，我们留在[最后](#babel处理ast)进行分析。我们先看看其主要做了什么：
+具体实现因为涉及`babel`解析`ast`，需要了解一些`ast`的属性，所以和`扫描缓存enum`部分一样，我们留在[最后](#babel-处理-ast)进行分析。我们先看看其主要做了什么：
+
+::: details
 
 - **移除所有标记了@internal 的类型属性**
 
@@ -537,3 +540,82 @@ import '../jsx'
 :::
 
 ## babel 处理 ast
+
+前面的[const-enum.js](#const-enum-脚本)脚本和[patchTypes](#patchtypes-plugin)插件具体实现都涉及到了用`@babel/parser`的[parse](https://babeljs.io/docs/babel-parser#api)方法得到`ast`并结合[magic-string](https://www.npmjs.com/package/magic-string)来进行转换源码的操作。我们知道`ast`是对源码编译后生成的一个对应对象(即抽象语法树)，所以除去具体的如何编译成语法树的算法，剩下的各种树节点的类型(变量，函数，导出等，以及每个节点的起始结束位置等信息)其实也没什么需要说明的，主要还是在[文档](https://github.com/babel/babel/blob/main/packages/babel-parser/ast/spec.md)找到对应的类型含义。
+
+这里有一个[在线语法树生成工具](https://lihautan.com/babel-ast-explorer/)可以参考用一下。下面我们对`const-enum.js`脚本和`patchTypes`插件里用到的一些节点类型进行简单地说明。
+
+### enum 类型的 ast
+
+以下代码和编译成的对应 ast 如下所示：**大部分 ast 属性已省略**。
+
+::: code-group
+
+```ts [源码]
+export const enum Test {
+  Foo = 'foo value'
+}
+
+export { Test }
+```
+
+```js{6-7,17,24,28,41-42,47} [ast]
+const ast = {
+  program: {
+    body: [
+      {
+        type: 'ExportNamedDeclaration',
+        start: 0,
+        end: 46,
+        specifiers: [],
+        declaration: {
+          type: 'TSEnumDeclaration',
+          start: 7,
+          end: 46,
+          id: {
+            type: 'Identifier',
+            start: 18,
+            end: 22,
+            name: 'Test'
+          },
+          members: [
+            {
+              type: 'TSEnumMember',
+              id: {
+                type: 'Identifier',
+                name: 'Foo'
+              },
+              initializer: {
+                type: 'StringLiteral',
+                value: 'foo value'
+              }
+            }
+          ]
+        }
+      },
+      {
+        type: 'ExportNamedDeclaration',
+        start: 48,
+        end: 63,
+        specifiers: [
+          {
+            type: 'ExportSpecifier',
+            start: 57,
+            end: 61,
+            local: {
+              type: 'Identifier',
+              start: 57,
+              end: 61,
+              name: 'Test'
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+:::
+
+重点需要关注用到的已经高亮，其中
