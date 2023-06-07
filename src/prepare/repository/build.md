@@ -161,7 +161,7 @@ flowchart LR
 
 `build`方法其实主要就是调用`rollup -c --environment <环境变量>`并处理所需参数。其中有以下几点逻辑：
 
-- 如果在`isRelease`状态，且没有指定打包的包(all)，其会忽略`private`包(虽然在过滤匹配包时已经处理了)
+- 如果在`isRelease`状态，且没有指定打包的包(all)，其会忽略`private`包(虽然在过滤匹配包时已经处理了)，**目前`private`的包是`dts-test`和`runtime-test`，所以这两个包是不会打包的，如果指定如`pnpm build runtime-test`就会报`Target not found`的错误**
 - 如果有指定打包的格式，那么就不移除已存在的`dist`文件夹
 
 接着交给`rollup`处理
@@ -422,7 +422,7 @@ runParallel(
 
 ### 打包类型声明
 
-在将所有指定包打包完后，通过`-t (buildTypes)`选项可以选择是否同时打包输出类型声明文件。其过程就是执行了`rollup`相关命令。
+在将所有指定包打包完后，通过`-t (buildTypes)`选项可以选择是否同时打包输出类型声明文件。**如果需要进行包类型依赖的行为，比如 dts-test 进行[类型测试](./test.md#类型测试)时，则需要打包类型声明文件**， 其过程就是执行了`rollup`相关命令。
 
 ```js
 if (buildTypes) {
