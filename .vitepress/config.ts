@@ -86,7 +86,8 @@ function sidebarPrepare(): DefaultTheme.SidebarItem[] {
         { text: '开发', link: '/prepare/repository/dev' },
         { text: '生产打包', link: '/prepare/repository/build' },
         { text: '测试', link: '/prepare/repository/test' },
-        { text: '发包', link: '/prepare/repository/publish' }
+        { text: '发包', link: '/prepare/repository/publish' },
+        { text: '代码规范', link: '/prepare/repository/convention' }
       ]
     }
   ]
