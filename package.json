@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "axios": "^1.4.0",
-    "vitepress": "1.0.0-alpha.75",
-    "vue": "^3.2.47"
+    "vitepress": "1.0.0-rc.15",
+    "vue": "^3.3.4"
   }
 }
