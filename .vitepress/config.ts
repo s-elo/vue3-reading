@@ -29,7 +29,11 @@ export default withMermaid(
       // https://vitepress.dev/reference/default-theme-config
       nav: [
         { text: '准备', link: '/prepare/start', activeMatch: '/prepare/' },
-        { text: '核心', link: '/core/start', activeMatch: '/core/' }
+        {
+          text: '核心',
+          link: '/core/reactivity/reactive',
+          activeMatch: '/core/'
+        }
       ],
 
       sidebar: {
@@ -95,6 +99,16 @@ function sidebarPrepare(): DefaultTheme.SidebarItem[] {
 
 function sidebarCore(): DefaultTheme.SidebarItem[] {
   return [
+    {
+      text: '响应式系统',
+      collapsed: false,
+      items: [
+        {
+          text: 'reactive',
+          link: '/core/reactivity/reactive'
+        }
+      ]
+    },
     {
       text: '渲染系统',
       collapsed: false,
