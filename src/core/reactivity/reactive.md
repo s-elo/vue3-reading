@@ -516,6 +516,268 @@ set(
   - 不是数组响应式对象时，如果 oldValue 是 ref，且 newValue 不是 ref，直接更新 oldValue 的值即可，因为 oldValue 的 ref 会自动触发更新
 - **防止 target 为原型链上的对象时的 trigger**：anybody provides some cases?
 
-#### track/trigger
+> 此外`mutableHandlers`还有一些方法的实现：`deleteProperty`, `has` and `ownKeys`，这些方法都类似地通过调用`track`或者`trigger`来处理响应式，[实现](https://github.com/vuejs/core/blob/main/packages/reactivity/src/baseHandlers.ts#L209)比较类似，就不在这里赘述了。
+
+#### trigger
 
 咱们终于要来看最主要的两个部分，`track` and `trigger`。不过天色已晚，下次再继续分析吧。
+
+after a week...
+
+o ha yo u, 咱们趁热打铁，先来看看`trigger`的实现。
+
+```ts
+/**
+ * Finds all deps associated with the target (or a specific property) and
+ * triggers the effects stored within.
+ *
+ * @param target - The reactive object.
+ * @param type - Defines the type of the operation that needs to trigger effects.
+ * @param key - Can be used to target a specific reactive property in the target object.
+ */
+export function trigger(
+  target: object,
+  type: TriggerOpTypes,
+  key?: unknown,
+  newValue?: unknown,
+  oldValue?: unknown,
+  oldTarget?: Map<unknown, unknown> | Set<unknown>
+) {
+  const depsMap = targetMap.get(target)
+  if (!depsMap) {
+    // never been tracked
+    return
+  }
+
+  // 添加需要处理的deps (deps就是effects set)
+  let deps: (Dep | undefined)[] = []
+  if (type === TriggerOpTypes.CLEAR) {
+    // collection being cleared
+    // trigger all effects for target
+    deps = [...depsMap.values()]
+  } else if (key === 'length' && isArray(target)) {
+    const newLength = Number(newValue)
+    depsMap.forEach((dep, key) => {
+      // 当数组的length变小，之前大于当前length的索引键值的effects都要被添加，相当于removed trigger
+      // 新增索引的effects在下面TriggerOpTypes.ADD case下添加了
+      if (key === 'length' || (!isSymbol(key) && key >= newLength)) {
+        deps.push(dep)
+      }
+    })
+  } else {
+    // schedule runs for SET | ADD | DELETE
+    if (key !== void 0) {
+      // 提供了key就把对于key的deps添加上
+      deps.push(depsMap.get(key))
+    }
+
+    // also run for iteration key on ADD | DELETE | Map.SET
+    // 因为新增或者删除，都会影响对应target的遍历结果
+    switch (type) {
+      case TriggerOpTypes.ADD:
+        if (!isArray(target)) {
+          deps.push(depsMap.get(ITERATE_KEY))
+          if (isMap(target)) {
+            // MAP_KEY_ITERATE_KEY是在只是遍历keys时才会被对应effect收集的依赖。
+            deps.push(depsMap.get(MAP_KEY_ITERATE_KEY))
+          }
+        } else if (isIntegerKey(key)) {
+          // 新增索引时，length的effects也需要被trigger
+          // new index added to array -> length changes
+          deps.push(depsMap.get('length'))
+        }
+        break
+      case TriggerOpTypes.DELETE:
+        // 数组元素的删除操作会trigger上面key === 'length' && isArray(target)的effects，所以这里不需要处理
+        if (!isArray(target)) {
+          deps.push(depsMap.get(ITERATE_KEY))
+          if (isMap(target)) {
+            deps.push(depsMap.get(MAP_KEY_ITERATE_KEY))
+          }
+        }
+        break
+      case TriggerOpTypes.SET:
+        if (isMap(target)) {
+          deps.push(depsMap.get(ITERATE_KEY))
+        }
+        break
+    }
+  }
+
+  const eventInfo = __DEV__
+    ? { target, type, key, newValue, oldValue, oldTarget }
+    : undefined
+
+  if (deps.length === 1) {
+    if (deps[0]) {
+      if (__DEV__) {
+        triggerEffects(deps[0], eventInfo)
+      } else {
+        triggerEffects(deps[0])
+      }
+    }
+  } else {
+    // 如果有多个deps，需要把所有deps里的effects gather到一起，重写组成一个deps再处理
+    const effects: ReactiveEffect[] = []
+    for (const dep of deps) {
+      if (dep) {
+        effects.push(...dep)
+      }
+    }
+    if (__DEV__) {
+      triggerEffects(createDep(effects), eventInfo)
+    } else {
+      triggerEffects(createDep(effects))
+    }
+  }
+}
+```
+
+[void 0 or undefined](https://stackoverflow.com/questions/19369023/should-i-use-void-0-or-undefined-in-javascript)
+
+`trigger`方法做的事情注释已经说的很清楚了：`Finds all deps associated with the target (or a specific property) and triggers the effects stored within.`
+
+主要就是**找到所有的 effects**，因为`trigger`不一定只是触发对应的 key(如果提供了参数)的 deps，像数组，collection 类型对象，可能会需要触发`length`和`ITERATE_KEY`。
+
+- `collection`类型被`clear`了，直接触发所有 key 的`effects`
+- key 是数组的`length`时，除了`length`本身的`effects`，还要触发被删除的索引 key 的`effects`(如果 length 变小)。
+- 对于剩下的其他情况，首先将`provided key`的`effects`添加上，然后处理是否需要添加额外的`iteration key`。
+  - `TriggerOpTypes.ADD`: 如果是新增 key，对于`collection`类型添加`ITERATE_KEY`的`effects`，`Map`类型还需加`MAP_KEY_ITERATE_KEY`的`effects`；数组的话需要添加`length`的`effect`。
+  - `TriggerOpTypes.DELETE`: 如果是删除 key，对于`collection`类型的处理和新增 key 时一样；此时不需要处理数组类型被删索引 key 的`effects`了，因为会在处理`length`key 时将删索引 key 的`effects`加上。
+  - `TriggerOpTypes.SET`: `Map`的`set`操作，只需要再添加`ITERATE_KEY`的`effects`就行了，因为 key 没有变化，所以不需要`MAP_KEY_ITERATE_KEY`的`effects`。
+
+对于**触发 effects**就非常简单了。对于需要触发多个`deps`的`effects`，将所有 deps 里的 effects gather 到一起，重写组成一个 deps 再处理即可，然后交给`triggerEffects`方法处理。
+
+```ts
+export function triggerEffects(
+  dep: Dep | ReactiveEffect[],
+  debuggerEventExtraInfo?: DebuggerEventExtraInfo
+) {
+  // spread into array for stabilization
+  const effects = isArray(dep) ? dep : [...dep]
+  for (const effect of effects) {
+    if (effect.computed) {
+      triggerEffect(effect, debuggerEventExtraInfo)
+    }
+  }
+  for (const effect of effects) {
+    if (!effect.computed) {
+      triggerEffect(effect, debuggerEventExtraInfo)
+    }
+  }
+}
+```
+
+`triggerEffects`方法做的事情就是将`computed effects`和`非computed effects`分离开触发，且保证前者先触发完。至于`computed effects`的来源和用法，咱们暂时不去深究，目测是和`computed`相关。
+
+那现在就剩最后的`triggerEffect`方法了，用来真正的 run 一下对应`effect`的回调。
+
+```ts
+function triggerEffect(
+  effect: ReactiveEffect,
+  debuggerEventExtraInfo?: DebuggerEventExtraInfo
+) {
+  // 防止递归执行
+  if (effect !== activeEffect || effect.allowRecurse) {
+    if (__DEV__ && effect.onTrigger) {
+      effect.onTrigger(extend({ effect }, debuggerEventExtraInfo))
+    }
+    if (effect.scheduler) {
+      effect.scheduler()
+    } else {
+      effect.run()
+    }
+  }
+}
+```
+
+主要点就是判断是否有`scheduler`这东西，有就执行`scheduler`，否则就触发对应回调。
+
+`scheduler`就是咱们用来自定义`effects`的`执行时机`的，因为我们可以知道`scheduler`回调的调用就是`effect`本应该被执行的时候，但我就吊着你，先不执行。
+
+那我们就可以 schedule 一下例如触发实际渲染前多次修改响应式值的情况了，防止短时间内的重复渲染。
+
+#### track
+
+OK，现在知道了触发过程，咱们就得看看那些`effects`是如果被关联到对应 key 的`deps`中的。
+
+我们知道`track`函数的调用是在对应 key 的代理被`get`时，所以在执行某个`effect`回调时，只要`get`了一下对应的 key，那么就会调用`track`。
+
+```ts
+/**
+ * Tracks access to a reactive property.
+ *
+ * This will check which effect is running at the moment and record it as dep
+ * which records all effects that depend on the reactive property.
+ *
+ * @param target - Object holding the reactive property.
+ * @param type - Defines the type of access to the reactive property.
+ * @param key - Identifier of the reactive property to track.
+ */
+export function track(target: object, type: TrackOpTypes, key: unknown) {
+  // 当然只有activeEffect存在才需要track
+  // shouldTrack就是用来控制之前提到的暂停收集的标识，具体怎么设置还得后面再说
+  // shouldTrack && activeEffect都是effect.js的闭包变量
+  if (shouldTrack && activeEffect) {
+    // 就是获取/初始化dep(Set<effects>)的过程，
+    let depsMap = targetMap.get(target)
+    if (!depsMap) {
+      targetMap.set(target, (depsMap = new Map()))
+    }
+    let dep = depsMap.get(key)
+    if (!dep) {
+      depsMap.set(key, (dep = createDep()))
+    }
+
+    const eventInfo = __DEV__
+      ? { effect: activeEffect, target, type, key }
+      : undefined
+
+    trackEffects(dep, eventInfo)
+  }
+}
+```
+
+`activeEffect`是个`Effect`对象，里面有其对应的回调函数，以及其它一些 meta 信息，用来存放`deps`以及实现后续的其他功能等。
+
+主要来看看`trackEffects`，里面已经开始出现`effect`方法涉及的相关逻辑了，但咱们先忽略，后面再结合`effect`来分析。
+
+```ts{20,21}
+export function trackEffects(
+  dep: Dep,
+  debuggerEventExtraInfo?: DebuggerEventExtraInfo
+) {
+  let shouldTrack = false
+  // effectTrackDepth & maxMarkerBits都是effect.js的闭包变量
+  // 用来记录最大effect递归层数，这里先提一嘴，具体后面再说
+  if (effectTrackDepth <= maxMarkerBits) {
+    if (!newTracked(dep)) {
+      dep.n |= trackOpBit // set newly tracked
+      shouldTrack = !wasTracked(dep)
+    }
+  } else {
+    // Full cleanup mode.
+    shouldTrack = !dep.has(activeEffect!)
+  }
+
+  if (shouldTrack) {
+    // 这里就是effect和其对应依赖关系的形成之处！
+    dep.add(activeEffect!)
+    activeEffect!.deps.push(dep)
+    if (__DEV__ && activeEffect!.onTrack) {
+      activeEffect!.onTrack(
+        extend(
+          {
+            effect: activeEffect!
+          },
+          debuggerEventExtraInfo!
+        )
+      )
+    }
+  }
+}
+```
+
+可以看到，对应的`dep`Set 会把`activeEffect`添加进去，而`activeEffect`会把对应的`dep`加进自己的`deps`数组里。
+
+接下来，我们就得看看`effect`方法的实现以及其和以上我们的`trigger`&`track`的关系了。
