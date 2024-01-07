@@ -106,6 +106,10 @@ function sidebarCore(): DefaultTheme.SidebarItem[] {
         {
           text: 'reactive',
           link: '/core/reactivity/reactive'
+        },
+        {
+          text: 'effect',
+          link: '/core/reactivity/effect'
         }
       ]
     },

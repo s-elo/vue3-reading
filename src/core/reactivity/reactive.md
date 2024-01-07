@@ -691,7 +691,20 @@ function triggerEffect(
 }
 ```
 
-主要点就是判断是否有`scheduler`这东西，有就执行`scheduler`，否则就触发对应回调。
+首先是防止递归的判断：`effect !== activeEffect || effect.allowRecurse`。
+通过`effect !== activeEffect`可以防止以下情况。
+
+```ts
+const obj = reactive({ name: 'leo' })
+effect(() => {
+  // 收集了依赖
+  console.log(obj.name)
+  // 紧接着就触发了，导致循环
+  obj.name = 'pit'
+})
+```
+
+其次就是判断是否有`scheduler`这东西，有就执行`scheduler`，否则就触发对应回调。
 
 `scheduler`就是咱们用来自定义`effects`的`执行时机`的，因为我们可以知道`scheduler`回调的调用就是`effect`本应该被执行的时候，但我就吊着你，先不执行。
 
